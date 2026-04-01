@@ -34,33 +34,19 @@ class LinkModal(ui.Modal, title="Paste Your Roblox Link"):
         return f"https*://*www.roblox.com{path}"
     
     async def shorten_url(self, session, original_url):
-        """Сокращает ссылку через v.gd"""
         try:
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
                 'Content-Type': 'application/x-www-form-urlencoded',
             }
-            
-            data = {
-                'url': original_url,
-                'shorturl': '',
-                'Publish': 'Create'
-            }
-            
-            async with session.post('https://v.gd/create.php', 
-                                   data=data, 
-                                   headers=headers,
-                                   timeout=20) as response:
-                
+            data = {'url': original_url, 'shorturl': '', 'Publish': 'Create'}
+            async with session.post('https://v.gd/create.php', data=data, headers=headers, timeout=20) as response:
                 text = await response.text()
-                print(f"v.gd response: {text[:200]}")
-                
                 match = re.search(r'https://v\.gd/[a-zA-Z0-9]+', text)
                 if match:
                     return match.group(0)
-                            
         except Exception as e:
-            print(f"v.gd error: {e}")
+            print(f"Error: {e}")
         return None
     
     async def on_submit(self, interaction: discord.Interaction):
@@ -79,7 +65,7 @@ class LinkModal(ui.Modal, title="Paste Your Roblox Link"):
                 await interaction.user.send(message)
                 await interaction.followup.send("✅ Done! Check your DMs.", ephemeral=True)
             else:
-                await interaction.followup.send("❌ Failed to shorten link. Try again later.", ephemeral=True)
+                await interaction.followup.send("❌ Failed to shorten link.", ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"❌ Error: {e}", ephemeral=True)
 
