@@ -32,20 +32,60 @@ class LinkModal(ui.Modal, title="Paste Your Roblox Link"):
             path = re.sub(r'^https?://[^/]+', '', original_url)
         return f"https*://*www.roblox.com{path}"
     
-    async def shorten_url(self, session, original_url):
+    async def shorten_url_isgd(self, session, original_url):
+        """Сокращает ссылку через is.gd с полными заголовками браузера"""
         try:
             headers = {
-                'User-Agent': 'Mozilla/5.0',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'en-US,en;q=0.9',
+                'Accept-Encoding': 'gzip, deflate, br',
                 'Content-Type': 'application/x-www-form-urlencoded',
+                'Origin': 'https://is.gd',
+                'Referer': 'https://is.gd/',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'same-origin',
+                'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                'Sec-Ch-Ua-Mobile': '?0',
+                'Sec-Ch-Ua-Platform': '"Windows"',
+                'Upgrade-Insecure-Requests': '1',
             }
-            data = {'url': original_url, 'shorturl': '', 'submit': 'Shorten!'}
-            async with session.post('https://is.gd/create.php', data=data, headers=headers, timeout=15) as resp:
-                text = await resp.text()
-                match = re.search(r'https://is\.gd/[a-zA-Z0-9]+', text)
-                if match:
-                    return match.group(0)
+            
+            data = {
+                'url': original_url,
+                'shorturl': '',
+                'submit': 'Shorten!'
+            }
+            
+            async with session.post('https://is.gd/create.php', 
+                                   data=data, 
+                                   headers=headers,
+                                   timeout=20,
+                                   allow_redirects=True) as response:
+                
+                text = await response.text()
+                print(f"is.gd response length: {len(text)}")
+                
+                # Ищем ссылку в ответе
+                patterns = [
+                    r'https://is\.gd/[a-zA-Z0-9]+',
+                    r'value="(https://is\.gd/[^"]+)"',
+                    r'Your short URL is: <b>([^<]+)</b>',
+                ]
+                
+                for pattern in patterns:
+                    match = re.search(pattern, text)
+                    if match:
+                        result = match.group(1) if 'value="' in pattern else match.group(0)
+                        if result and result.startswith('https://is.gd/'):
+                            print(f"✅ is.gd success: {result}")
+                            return result
+                            
+        except asyncio.TimeoutError:
+            print("is.gd timeout")
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"is.gd error: {e}")
         return None
     
     async def on_submit(self, interaction: discord.Interaction):
@@ -56,7 +96,7 @@ class LinkModal(ui.Modal, title="Paste Your Roblox Link"):
         
         try:
             async with aiohttp.ClientSession() as session:
-                short_url = await self.shorten_url(session, original_url)
+                short_url = await self.shorten_url_isgd(session, original_url)
             
             if short_url:
                 display_url = self.format_display_url(original_url)
@@ -64,7 +104,7 @@ class LinkModal(ui.Modal, title="Paste Your Roblox Link"):
                 await interaction.user.send(message)
                 await interaction.followup.send("✅ Done! Check your DMs.", ephemeral=True)
             else:
-                await interaction.followup.send("❌ Failed to shorten link.", ephemeral=True)
+                await interaction.followup.send("❌ Failed to shorten link. is.gd may be temporarily unavailable.", ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"❌ Error: {e}", ephemeral=True)
 
