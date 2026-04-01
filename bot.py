@@ -33,20 +33,36 @@ class LinkModal(ui.Modal, title="Paste Your Roblox Link"):
             path = re.sub(r'^https?://[^/]+', '', original_url)
         return f"https*://*www.roblox.com{path}"
     
-    async def shorten_url(self, session, original_url):
+    async def shorten_url_isgd(self, session, original_url):
         try:
             headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
                 'Content-Type': 'application/x-www-form-urlencoded',
+                'Origin': 'https://is.gd',
+                'Referer': 'https://is.gd/',
             }
-            data = {'url': original_url, 'shorturl': '', 'Publish': 'Create'}
-            async with session.post('https://v.gd/create.php', data=data, headers=headers, timeout=20) as response:
+            
+            data = {
+                'url': original_url,
+                'shorturl': '',
+                'submit': 'Shorten!'
+            }
+            
+            async with session.post('https://is.gd/create.php', 
+                                   data=data, 
+                                   headers=headers,
+                                   timeout=25) as response:
+                
                 text = await response.text()
-                match = re.search(r'https://v\.gd/[a-zA-Z0-9]+', text)
+                
+                match = re.search(r'https://is\.gd/[a-zA-Z0-9]+', text)
                 if match:
                     return match.group(0)
+                            
         except Exception as e:
-            print(f"Error: {e}")
+            print(f"is.gd error: {e}")
         return None
     
     async def on_submit(self, interaction: discord.Interaction):
@@ -57,7 +73,7 @@ class LinkModal(ui.Modal, title="Paste Your Roblox Link"):
         
         try:
             async with aiohttp.ClientSession() as session:
-                short_url = await self.shorten_url(session, original_url)
+                short_url = await self.shorten_url_isgd(session, original_url)
             
             if short_url:
                 display_url = self.format_display_url(original_url)
@@ -65,7 +81,7 @@ class LinkModal(ui.Modal, title="Paste Your Roblox Link"):
                 await interaction.user.send(message)
                 await interaction.followup.send("✅ Done! Check your DMs.", ephemeral=True)
             else:
-                await interaction.followup.send("❌ Failed to shorten link.", ephemeral=True)
+                await interaction.followup.send("❌ Failed to shorten link. is.gd may be temporarily unavailable.", ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"❌ Error: {e}", ephemeral=True)
 
