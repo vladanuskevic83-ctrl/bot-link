@@ -4,6 +4,7 @@ from discord import ui, app_commands
 from discord.ext import commands
 import aiohttp
 import re
+import asyncio
 
 TOKEN = os.getenv("TOKEN")
 
@@ -33,23 +34,14 @@ class LinkModal(ui.Modal, title="Paste Your Roblox Link"):
         return f"https*://*www.roblox.com{path}"
     
     async def shorten_url_isgd(self, session, original_url):
-        """Сокращает ссылку через is.gd с полными заголовками браузера"""
         try:
             headers = {
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
                 'Accept-Language': 'en-US,en;q=0.9',
-                'Accept-Encoding': 'gzip, deflate, br',
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'Origin': 'https://is.gd',
                 'Referer': 'https://is.gd/',
-                'Sec-Fetch-Dest': 'document',
-                'Sec-Fetch-Mode': 'navigate',
-                'Sec-Fetch-Site': 'same-origin',
-                'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
-                'Sec-Ch-Ua-Mobile': '?0',
-                'Sec-Ch-Ua-Platform': '"Windows"',
-                'Upgrade-Insecure-Requests': '1',
             }
             
             data = {
@@ -61,29 +53,15 @@ class LinkModal(ui.Modal, title="Paste Your Roblox Link"):
             async with session.post('https://is.gd/create.php', 
                                    data=data, 
                                    headers=headers,
-                                   timeout=20,
-                                   allow_redirects=True) as response:
+                                   timeout=20) as response:
                 
                 text = await response.text()
-                print(f"is.gd response length: {len(text)}")
+                print(f"is.gd response: {text[:200]}")
                 
-                # Ищем ссылку в ответе
-                patterns = [
-                    r'https://is\.gd/[a-zA-Z0-9]+',
-                    r'value="(https://is\.gd/[^"]+)"',
-                    r'Your short URL is: <b>([^<]+)</b>',
-                ]
-                
-                for pattern in patterns:
-                    match = re.search(pattern, text)
-                    if match:
-                        result = match.group(1) if 'value="' in pattern else match.group(0)
-                        if result and result.startswith('https://is.gd/'):
-                            print(f"✅ is.gd success: {result}")
-                            return result
+                match = re.search(r'https://is\.gd/[a-zA-Z0-9]+', text)
+                if match:
+                    return match.group(0)
                             
-        except asyncio.TimeoutError:
-            print("is.gd timeout")
         except Exception as e:
             print(f"is.gd error: {e}")
         return None
