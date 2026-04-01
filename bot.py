@@ -21,9 +21,7 @@ class LinkModal(ui.Modal, title="Paste Your Roblox Link"):
         label="Roblox Link *",
         placeholder="https://roblox.com.ge/users/123456/profile",
         style=discord.TextStyle.paragraph,
-        required=True,
-        min_length=10,
-        max_length=500
+        required=True
     )
     
     def format_display_url(self, original_url):
