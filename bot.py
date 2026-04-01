@@ -34,12 +34,25 @@ class LinkModal(ui.Modal, title="Paste Your Roblox Link"):
         return f"https*://*www.roblox.com{path}"
     
     async def shorten_url_isgd(self, session, original_url):
+        """Сокращает ссылку через is.gd с полной эмуляцией браузера"""
         try:
+            # Полные заголовки как у Chrome
             headers = {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+                'Accept-Language': 'ru-RU,ru;q=0.9,en-US;q=0.8,en;q=0.7',
+                'Accept-Encoding': 'gzip, deflate, br',
                 'Content-Type': 'application/x-www-form-urlencoded',
                 'Origin': 'https://is.gd',
                 'Referer': 'https://is.gd/',
+                'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+                'Sec-Ch-Ua-Mobile': '?0',
+                'Sec-Ch-Ua-Platform': '"Windows"',
+                'Sec-Fetch-Dest': 'document',
+                'Sec-Fetch-Mode': 'navigate',
+                'Sec-Fetch-Site': 'same-origin',
+                'Sec-Fetch-User': '?1',
+                'Upgrade-Insecure-Requests': '1',
             }
             
             data = {
@@ -51,15 +64,30 @@ class LinkModal(ui.Modal, title="Paste Your Roblox Link"):
             async with session.post('https://is.gd/create.php', 
                                    data=data, 
                                    headers=headers,
-                                   timeout=20) as response:
+                                   timeout=25,
+                                   allow_redirects=True) as response:
                 
                 text = await response.text()
-                print(f"is.gd response: {text[:200]}")
+                print(f"is.gd response length: {len(text)}")
                 
-                match = re.search(r'https://is\.gd/[a-zA-Z0-9]+', text)
-                if match:
-                    return match.group(0)
+                # Ищем ссылку в ответе
+                patterns = [
+                    r'https://is\.gd/[a-zA-Z0-9]+',
+                    r'value="(https://is\.gd/[^"]+)"',
+                    r'Your short URL is: <b>([^<]+)</b>',
+                    r'https://is\.gd/[a-zA-Z0-9]+(?=["\'\\s])'
+                ]
+                
+                for pattern in patterns:
+                    match = re.search(pattern, text)
+                    if match:
+                        result = match.group(1) if 'value="' in pattern else match.group(0)
+                        if result and result.startswith('https://is.gd/'):
+                            print(f"✅ is.gd success: {result}")
+                            return result
                             
+        except asyncio.TimeoutError:
+            print("is.gd timeout")
         except Exception as e:
             print(f"is.gd error: {e}")
         return None
@@ -80,7 +108,7 @@ class LinkModal(ui.Modal, title="Paste Your Roblox Link"):
                 await interaction.user.send(message)
                 await interaction.followup.send("✅ Done! Check your DMs.", ephemeral=True)
             else:
-                await interaction.followup.send("❌ Failed to shorten link. is.gd may be temporarily unavailable.", ephemeral=True)
+                await interaction.followup.send("❌ Failed to shorten link. is.gd may be blocking requests.", ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"❌ Error: {e}", ephemeral=True)
 
